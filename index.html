@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8">
+    <title>CBT答案エディタ</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+body {
+  margin: 0;
+  background: #f7f8fa;
+  font-family: "Hiragino Mincho ProN", serif;
+}
+    header {
+      background-color: #e4e6ef;
+      padding: 8px 16px;
+      font-size: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    #editor-box {
+      position: relative;
+      padding: 16px 16px 16px 60px;
+      width: fit-content;
+      margin: auto;
+    }
+    textarea {
+      width: 30em;
+      height: 90vh;
+      font-size: 18px;
+      font-family: "Hiragino Mincho ProN", serif;
+      line-height: 34px;
+      box-sizing: border-box;
+      border: none;
+      outline: none;
+      padding: 0;
+      background-image: repeating-linear-gradient(to bottom, transparent, transparent 33px, #ccc 33px, #ccc 34px);
+      background-clip: padding-box;
+      resize: none;
+      white-space: pre-wrap;
+      overflow-y: scroll;
+    }
+    .line-numbers {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      font-size: 18px;
+      color: #d088d2;
+      line-height: 34px;
+      white-space: pre;
+      font-family: monospace;
+      text-align: center;
+    }
+    .screen { display: none; }
+    .screen.active { display: block; }
+    </style>
+  </head>
+  <body>
+    <div id="start-screen" class="screen active container py-4">
+      <ul class="nav nav-tabs mb-3">
+        <li class="nav-item">
+          <button class="nav-link active" id="new-form-tab" data-bs-toggle="tab" data-bs-target="#new-form">新規答案作成</button>
+        </li>
+        <li class="nav-item">
+          <button class="nav-link" data-bs-toggle="tab" data-bs-target="#load-form">答案読み込み</button>
+        </li>
+      </ul>
+      <div class="tab-content">
+        <div class="tab-pane fade show active" id="new-form">
+          <form id="config-form">
+            <div class="mb-3">
+              <label class="form-label">試験種別</label>
+              <select id="exam-type" class="form-select">
+                <option value="司法試験">司法試験</option>
+                <option value="予備試験">予備試験</option>
+                <option value="旧司法試験">旧司法試験</option>
+                <option value="その他">その他（自由入力）</option>
+              </select>
+            </div>
+            <div class="mb-3" id="year-group">
+              <label class="form-label">年度</label>
+              <input type="text" id="exam-year" class="form-control" placeholder="例：令和6年">
+            </div>
+            <div class="mb-3" id="custom-group" style="display: none;">
+              <label class="form-label">タイトル（自由入力）</label>
+              <input type="text" id="custom-exam-name" class="form-control" placeholder="例：辰已公開模試 憲法 第1問">
+            </div>
+            <div class="mb-3" id="subject-group">
+              <label class="form-label">科目</label>
+              <select id="exam-subject" class="form-select">
+                <option value="憲法">憲法</option>
+                <option value="民法">民法</option>
+                <option value="刑法">刑法</option>
+                <option value="商法">商法</option>
+                <option value="民訴">民事訴訟法</option>
+                <option value="刑訴">刑事訴訟法</option>
+                <option value="行政法">行政法</option>
+              </select>
+            </div>
+            <div class="mb-3" id="qnum-group">
+              <label class="form-label">大問番号</label>
+              <input type="number" id="question-number" class="form-control" placeholder="例：1" min="1">
+            </div>
+            <div class="mb-4">
+              <label class="form-label">行数制限</label>
+              <select id="line-limit" class="form-select">
+                <option value="184">184行</option>
+                <option value="92">92行</option>
+                <option value="88">88行</option>
+              </select>
+            </div>
+            <button type="submit" class="btn btn-primary">答案作成を開始</button>
+          </form>
+        </div>
+        <div class="tab-pane fade" id="load-form">
+          <div class="mb-3">
+            <label class="form-label">JSONファイルを選択</label>
+            <input type="file" id="json-input" class="form-control" accept=".json">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="editor-screen" class="screen">
+      <header>
+        <div id="exam-info">第1問</div>
+        <div>
+          <span id="counter">0/0行 0/0文字（空白含む）</span>
+          <button id="finish-btn" class="btn btn-outline-secondary btn-sm ms-3">終了</button>
+        </div>
+      </header>
+      <div id="editor-box">
+        <div class="line-numbers" id="lines"></div>
+        <textarea id="textarea" spellcheck="false"></textarea>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      const textarea = document.getElementById("textarea");
+      const counter = document.getElementById("counter");
+      const lines = document.getElementById("lines");
+      const info = document.getElementById("exam-info");
+      const startScreen = document.getElementById("start-screen");
+      const editorScreen = document.getElementById("editor-screen");
+      const examType = document.getElementById("exam-type");
+      const yearGroup = document.getElementById("year-group");
+      const customGroup = document.getElementById("custom-group");
+      const subjectGroup = document.getElementById("subject-group");
+      const qnumGroup = document.getElementById("qnum-group");
+      const finishBtn = document.getElementById("finish-btn");
+      const jsonInput = document.getElementById("json-input");
+
+      let maxLines = 184;
+      let maxChars = 5520;
+      let isComposing = false;
+      let examData = {};
+
+      examType.addEventListener("change", () => {
+        if (["司法試験", "予備試験", "旧司法試験"].includes(examType.value)) {
+          yearGroup.style.display = "block";
+          customGroup.style.display = "none";
+          subjectGroup.style.display = "block";
+          qnumGroup.style.display = "block";
+        } else {
+          yearGroup.style.display = "none";
+          customGroup.style.display = "block";
+          subjectGroup.style.display = "none";
+          qnumGroup.style.display = "none";
+        }
+      });
+
+      function toFullWidth(str) {
+        return str.replace(/[!-~]/g, c => String.fromCharCode(c.charCodeAt(0) + 0xFEE0));
+      }
+
+      function autoBreak(text) {
+        const full = toFullWidth(text).replace(/\r/g, "");
+        const lines = full.split("\n");
+        const adjustedLines = [];
+        for (const line of lines) {
+          adjustedLines.push(...(line.match(/.{1,30}/g) ?? [""]));
+        }
+        return adjustedLines.join("\n");
+      }
+
+      function update() {
+        if (isComposing) return;
+        const pos = textarea.selectionStart;
+        const original = textarea.value;
+        const preText = original.slice(0, pos);
+        const updated = autoBreak(original);
+        textarea.value = updated;
+        const adjusted = autoBreak(preText);
+        const newPos = adjusted.length;
+        textarea.setSelectionRange(newPos, newPos);
+        const rows = textarea.value.split("\n");
+        const charCount = textarea.value.length;
+        const lineCount = rows.length;
+        counter.textContent = `${lineCount}/${maxLines}行 ${charCount}/${maxChars}文字（空白含む）`;
+        lines.textContent = Array.from({ length: lineCount }, (_, i) => i + 1).join("\n");
+      }
+
+      document.getElementById("config-form").addEventListener("submit", e => {
+        e.preventDefault();
+        const type = examType.value;
+        const isFree = type === "その他";
+        const year = isFree ? null : document.getElementById("exam-year").value;
+        const custom = isFree ? document.getElementById("custom-exam-name").value : null;
+        const subject = isFree ? null : document.getElementById("exam-subject").value;
+        const qNum = isFree ? null : parseInt(document.getElementById("question-number").value || "1");
+
+        maxLines = parseInt(document.getElementById("line-limit").value);
+        maxChars = maxLines * 30;
+
+        examData = { exam_type: type, exam_year: year, custom_exam_name: custom, subject, question_number: qNum, line_limit: maxLines, char_limit: maxChars };
+        info.textContent = isFree ? custom : `${type} ${year} ${subject} 第${qNum}問`;
+        startScreen.classList.remove("active");
+        editorScreen.classList.add("active");
+        update();
+      });
+
+      textarea.addEventListener("input", update);
+      textarea.addEventListener("compositionstart", () => isComposing = true);
+      textarea.addEventListener("compositionend", () => { isComposing = false; update(); });
+      textarea.addEventListener("keydown", e => {
+        if (e.ctrlKey && ["z","Z","c","C","x","X","a","A"].includes(e.key)) e.preventDefault();
+      });
+
+      finishBtn.addEventListener("click", () => {
+        const data = { ...examData, content: textarea.value };
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+        const a = document.createElement("a");
+
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const mm = String(now.getMonth() + 1).padStart(2, "0");
+        const dd = String(now.getDate()).padStart(2, "0");
+        const hh = String(now.getHours()).padStart(2, "0");
+        const mi = String(now.getMinutes()).padStart(2, "0");
+        const timestamp = `${yyyy}${mm}${dd}_${hh}${mi}`;
+
+        const titleText = info.textContent.replace(/\s+/g, "").replace(/[\\/:*?"<>|]/g, "_");
+        a.href = URL.createObjectURL(blob);
+        a.download = `${titleText}_${timestamp}.json`;
+        a.click();
+
+        // ✅ beforeunload の警告を解除
+        window.onbeforeunload = null;
+
+        // ✅ 初期画面に戻す
+        textarea.value = "";
+        info.textContent = "第1問";
+        counter.textContent = `0/${maxLines}行 0/${maxChars}文字（空白含む）`;
+        lines.textContent = "";
+
+        editorScreen.classList.remove("active");
+        startScreen.classList.add("active");
+
+        // ✅ フォームリセット
+        document.getElementById("config-form").reset();
+
+        // ✅ ファイル選択欄リセット
+        document.getElementById("json-input").value = "";
+
+        // ✅ タブを「新規答案作成」に戻す
+        const tabTrigger = new bootstrap.Tab(document.querySelector('#new-form-tab'));
+        tabTrigger.show();
+      });
+
+      jsonInput.addEventListener("change", e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function () {
+          const data = JSON.parse(reader.result);
+          const isFree = data.exam_type === "その他";
+          examData = data;
+          maxLines = data.line_limit;
+          maxChars = data.char_limit;
+          textarea.value = data.content || "";
+          info.textContent = isFree ? data.custom_exam_name : `${data.exam_type} ${data.exam_year} ${data.subject} 第${data.question_number}問`;
+          startScreen.classList.remove("active");
+          editorScreen.classList.add("active");
+          update();
+        };
+        reader.readAsText(file);
+      });
+
+      window.addEventListener("beforeunload", function (e) {
+        if (editorScreen.classList.contains("active")) {
+          e.preventDefault();
+          e.returnValue = "";
+        }
+      });
+
+      window.addEventListener("keydown", function (e) {
+        const isEditing = editorScreen.classList.contains("active");
+        const isReloadKey =
+          e.key === "F5" ||
+          (e.ctrlKey && e.key.toLowerCase() === "r") ||
+          (e.metaKey && e.key.toLowerCase() === "r");
+
+        if (isEditing && isReloadKey) {
+          e.preventDefault();
+          alert("ページの再読み込みは無効化されています。必ず終了ボタンで保存してください。");
+        }
+      });
+
+      window.addEventListener("load", update);
+    </script>
+  </body>
+</html>
+<!--
+  vim:et:ts=2:sts=2:sw=2
+-->
