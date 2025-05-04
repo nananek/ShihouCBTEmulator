@@ -8,7 +8,7 @@
 body {
   margin: 0;
   background: #f7f8fa;
-  font-family: "Yu Mincho", "MS Mincho", "Hiragino Mincho ProN", "Noto Serif", serif;
+  font-family: "MS Mincho", "Hiragino Mincho ProN", "Noto Serif", serif;
 }
     header {
       background-color: #e4e6ef;
@@ -28,7 +28,7 @@ body {
       width: 30em;
       height: 90vh;
       font-size: 18px;
-      font-family: "Yu Mincho", "MS Mincho", "Hiragino Mincho ProN", "Noto Serif", serif;
+      font-family: "MS Mincho", "Hiragino Mincho ProN", "Noto Serif", serif;
       line-height: 34px;
       box-sizing: border-box;
       border: none;
@@ -307,7 +307,26 @@ body {
         }
       });
 
-      window.addEventListener("load", update);
+      function adjustTextareaWidth() {
+          const ruler = document.createElement("span");
+          ruler.textContent = "あ"; // 全角1文字
+          ruler.style.visibility = "hidden";
+          ruler.style.position = "absolute";
+          ruler.style.whiteSpace = "pre";
+          ruler.style.fontFamily = textarea.style.fontFamily;
+          ruler.style.fontSize = textarea.style.fontSize;
+          document.body.appendChild(ruler);
+
+          const charWidth = ruler.getBoundingClientRect().width;
+          textarea.style.width = (charWidth * 30) + "px";
+
+          document.body.removeChild(ruler);
+      }
+
+      window.addEventListener("load", () => {
+        update();
+        adjustTextareaWidth();
+      });
     </script>
   </body>
 </html>
