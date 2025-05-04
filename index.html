@@ -148,6 +148,7 @@ body {
         <div id="exam-info">第1問</div>
         <div>
           <span id="counter">0/0行 0/0文字（空白含む）</span>
+          <button id="txt-btn" class="btn btn-outline-secondary btn-sm ms-2">📄 テキストとして保存</button>
           <button id="finish-btn" class="btn btn-outline-secondary btn-sm ms-3">終了</button>
         </div>
       </header>
@@ -349,6 +350,17 @@ body {
         update();
         adjustTextareaWidth();
       });
+      document.getElementById("txt-btn").addEventListener("click", () => {
+        const title = info.textContent.replace(/\s+/g, "").replace(/[\\/:*?"<>|]/g, "_");
+        const content = textarea.value;
+        const blob = new Blob([content], { type: "text/plain" });
+
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `${title}.txt`;
+        a.click();
+      });
+
     </script>
   </body>
 </html>
