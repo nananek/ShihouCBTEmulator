@@ -20,14 +20,18 @@ body {
   background: #f7f8fa;
   font-family: "MS Mincho", "Hiragino Mincho ProN", "Noto Serif", serif;
 }
-    header {
-      background-color: #e4e6ef;
-      padding: 8px 16px;
-      font-size: 14px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
+header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background-color: #e4e6ef;
+  padding: 8px 16px;
+  font-size: 14px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  border-bottom: 1px solid #ccc;
+}
     #editor-box {
       position: relative;
       padding: 16px 16px 16px 60px;
@@ -35,16 +39,17 @@ body {
       margin: auto;
     }
     textarea {
-      width: 30em;
+      width: 900px;
       height: 90vh;
-      font-size: 18px;
+      font-size: 27px;
       font-family: "MS Mincho", "Hiragino Mincho ProN", "Noto Serif", serif;
-      line-height: 34px;
+      line-height: 51px;
       box-sizing: border-box;
       border: none;
       outline: none;
       padding: 0;
-      background-image: repeating-linear-gradient(to bottom, transparent, transparent 33px, #ccc 33px, #ccc 34px);
+      background-image: repeating-linear-gradient(to bottom, transparent, transparent 50px, #ccc 50px, #ccc 51px);
+      background-attachment: local;
       background-clip: padding-box;
       resize: none;
       white-space: pre-wrap;
@@ -56,7 +61,7 @@ body {
       left: 16px;
       font-size: 18px;
       color: #d088d2;
-      line-height: 34px;
+      line-height: 51px;
       white-space: pre;
       font-family: monospace;
       text-align: center;
@@ -145,7 +150,6 @@ body {
 
     <div id="editor-screen" class="screen">
       <header>
-        <div id="exam-info">第1問</div>
         <div>
           <span id="counter">0/0行 0/0文字（空白含む）</span>
           <button id="txt-btn" class="btn btn-outline-secondary btn-sm ms-2">📄 テキストとして保存</button>
@@ -163,7 +167,6 @@ body {
       const textarea = document.getElementById("textarea");
       const counter = document.getElementById("counter");
       const lines = document.getElementById("lines");
-      const info = document.getElementById("exam-info");
       const startScreen = document.getElementById("start-screen");
       const editorScreen = document.getElementById("editor-screen");
       const examType = document.getElementById("exam-type");
@@ -237,7 +240,7 @@ body {
         maxChars = maxLines * 30;
 
         examData = { exam_type: type, exam_year: year, custom_exam_name: custom, subject, question_number: qNum, line_limit: maxLines, char_limit: maxChars };
-        info.textContent = isFree ? custom : `${type} ${year} ${subject} 第${qNum}問`;
+        document.title = isFree ? custom : `${type} ${year} ${subject} 第${qNum}問`;
         startScreen.classList.remove("active");
         editorScreen.classList.add("active");
         update();
@@ -263,7 +266,7 @@ body {
         const mi = String(now.getMinutes()).padStart(2, "0");
         const timestamp = `${yyyy}${mm}${dd}_${hh}${mi}`;
 
-        const titleText = info.textContent.replace(/\s+/g, "").replace(/[\\/:*?"<>|]/g, "_");
+        const titleText = document.title.replace(/\s+/g, "").replace(/[\\/:*?"<>|]/g, "_");
         a.href = URL.createObjectURL(blob);
         a.download = `${titleText}_${timestamp}.json`;
         a.click();
@@ -273,7 +276,7 @@ body {
 
         // ✅ 初期画面に戻す
         textarea.value = "";
-        info.textContent = "第1問";
+        document.title = "CBT答案エディタ";
         counter.textContent = `0/${maxLines}行 0/${maxChars}文字（空白含む）`;
         lines.textContent = "";
 
@@ -302,7 +305,7 @@ body {
           maxLines = data.line_limit;
           maxChars = data.char_limit;
           textarea.value = data.content || "";
-          info.textContent = isFree ? data.custom_exam_name : `${data.exam_type} ${data.exam_year} ${data.subject} 第${data.question_number}問`;
+          document.title = isFree ? data.custom_exam_name : `${data.exam_type} ${data.exam_year} ${data.subject} 第${data.question_number}問`;
           startScreen.classList.remove("active");
           editorScreen.classList.add("active");
           update();
@@ -336,8 +339,9 @@ body {
         ruler.style.visibility = "hidden";
         ruler.style.position = "absolute";
         ruler.style.whiteSpace = "pre";
-        ruler.style.fontFamily = textarea.style.fontFamily;
-        ruler.style.fontSize = textarea.style.fontSize;
+        ruler.style.display = "inline-block";
+        ruler.style.fontFamily = getComputedStyle(textarea).fontFamily;
+        ruler.style.fontSize = getComputedStyle(textarea).fontSize;
         document.body.appendChild(ruler);
 
         const charWidth = ruler.getBoundingClientRect().width;
@@ -349,9 +353,10 @@ body {
       window.addEventListener("load", () => {
         update();
         adjustTextareaWidth();
+        adjustTextareaHeight();
       });
       document.getElementById("txt-btn").addEventListener("click", () => {
-        const title = info.textContent.replace(/\s+/g, "").replace(/[\\/:*?"<>|]/g, "_");
+        const title = document.title.replace(/\s+/g, "").replace(/[\\/:*?"<>|]/g, "_");
         const content = textarea.value;
         const blob = new Blob([content], { type: "text/plain" });
 
@@ -361,6 +366,17 @@ body {
         a.click();
       });
 
+      const lineHeight = 51; // CSSと一致させる
+
+      textarea.addEventListener("scroll", () => {
+        const remainder = textarea.scrollTop % lineHeight;
+        if (remainder !== 0) {
+          textarea.scrollTop -= remainder;
+        }
+      });
+      function adjustTextareaHeight() {
+        textarea.style.height = (maxLines * lineHeight) + "px";
+      }
     </script>
   </body>
 </html>
